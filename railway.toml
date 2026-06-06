@@ -1,0 +1,26 @@
+[build]
+builder = "DOCKERFILE"
+
+[[services]]
+name = "backend"
+source = "backend"
+
+[services.build]
+dockerfilePath = "Dockerfile"
+
+[services.deploy]
+startCommand = "node dist/index.js"
+healthcheckPath = "/api/health"
+healthcheckTimeout = 30
+restartPolicyType = "on_failure"
+
+[[services]]
+name = "frontend"
+source = "frontend"
+
+[services.build]
+dockerfilePath = "Dockerfile"
+
+[services.deploy]
+startCommand = "nginx -g 'daemon off;'"
+restartPolicyType = "on_failure"
