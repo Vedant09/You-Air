@@ -1,109 +1,85 @@
 {
-  "hash": "291cd4c9",
-  "configHash": "70a14992",
-  "lockfileHash": "712a492a",
-  "browserHash": "5de76e26",
+  "hash": "62b18dd0",
+  "configHash": "420a5188",
+  "lockfileHash": "6b3f70b2",
+  "browserHash": "3bd856ec",
   "optimized": {
     "@angular/common": {
       "src": "../../../../../../node_modules/@angular/common/fesm2022/common.mjs",
       "file": "@angular_common.js",
-      "fileHash": "5fbd845d",
+      "fileHash": "b5220f42",
       "needsInterop": false
     },
     "@angular/common/http": {
       "src": "../../../../../../node_modules/@angular/common/fesm2022/http.mjs",
       "file": "@angular_common_http.js",
-      "fileHash": "1e3358f9",
+      "fileHash": "57d15717",
       "needsInterop": false
     },
     "@angular/core": {
       "src": "../../../../../../node_modules/@angular/core/fesm2022/core.mjs",
       "file": "@angular_core.js",
-      "fileHash": "ca15acc4",
+      "fileHash": "1af2213a",
       "needsInterop": false
     },
     "@angular/forms": {
       "src": "../../../../../../node_modules/@angular/forms/fesm2022/forms.mjs",
       "file": "@angular_forms.js",
-      "fileHash": "e7b49934",
+      "fileHash": "34f26fe6",
       "needsInterop": false
     },
     "@angular/platform-browser": {
       "src": "../../../../../../node_modules/@angular/platform-browser/fesm2022/platform-browser.mjs",
       "file": "@angular_platform-browser.js",
-      "fileHash": "4a1651f0",
+      "fileHash": "fe1aab98",
       "needsInterop": false
     },
     "@angular/platform-browser/animations": {
       "src": "../../../../../../node_modules/@angular/platform-browser/fesm2022/animations.mjs",
       "file": "@angular_platform-browser_animations.js",
-      "fileHash": "d54850c0",
+      "fileHash": "438c536e",
       "needsInterop": false
     },
-    "@deck.gl/layers": {
-      "src": "../../../../../../node_modules/@deck.gl/layers/dist/index.js",
-      "file": "@deck__gl_layers.js",
-      "fileHash": "99960409",
-      "needsInterop": false
-    },
-    "@deck.gl/mapbox": {
-      "src": "../../../../../../node_modules/@deck.gl/mapbox/dist/index.js",
-      "file": "@deck__gl_mapbox.js",
-      "fileHash": "e90dd85b",
-      "needsInterop": false
-    },
-    "maplibre-gl": {
-      "src": "../../../../../../node_modules/maplibre-gl/dist/maplibre-gl.js",
-      "file": "maplibre-gl.js",
-      "fileHash": "0f956091",
+    "leaflet": {
+      "src": "../../../../../../node_modules/leaflet/dist/leaflet-src.js",
+      "file": "leaflet.js",
+      "fileHash": "7831b4ec",
       "needsInterop": true
     },
     "rxjs": {
       "src": "../../../../../../node_modules/rxjs/dist/esm5/index.js",
       "file": "rxjs.js",
-      "fileHash": "4296c8cd",
+      "fileHash": "ed1b2b67",
       "needsInterop": false
     },
     "zone.js": {
       "src": "../../../../../../node_modules/zone.js/fesm2015/zone.js",
       "file": "zone__js.js",
-      "fileHash": "9ffbe518",
+      "fileHash": "382177b1",
       "needsInterop": true
     }
   },
   "chunks": {
-    "webgl-device-Q7O3GNMJ": {
-      "file": "webgl-device-Q7O3GNMJ.js"
+    "chunk-QEATDK7X": {
+      "file": "chunk-QEATDK7X.js"
     },
-    "chunk-IKVJNRD3": {
-      "file": "chunk-IKVJNRD3.js"
+    "chunk-FQBSX6YD": {
+      "file": "chunk-FQBSX6YD.js"
     },
-    "chunk-VSIY6N4U": {
-      "file": "chunk-VSIY6N4U.js"
-    },
-    "chunk-WOFG22P7": {
-      "file": "chunk-WOFG22P7.js"
-    },
-    "chunk-BA7INDB7": {
-      "file": "chunk-BA7INDB7.js"
-    },
-    "chunk-Y5CQBNO6": {
-      "file": "chunk-Y5CQBNO6.js"
+    "chunk-FFXY2WL6": {
+      "file": "chunk-FFXY2WL6.js"
     },
     "chunk-JRX4MMIO": {
       "file": "chunk-JRX4MMIO.js"
     },
-    "chunk-2WA7OG6Z": {
-      "file": "chunk-2WA7OG6Z.js"
+    "chunk-DLOYTF7Y": {
+      "file": "chunk-DLOYTF7Y.js"
     },
-    "chunk-2FXAGBM3": {
-      "file": "chunk-2FXAGBM3.js"
+    "chunk-RSS3ODKE": {
+      "file": "chunk-RSS3ODKE.js"
     },
-    "chunk-C46DD3QN": {
-      "file": "chunk-C46DD3QN.js"
-    },
-    "chunk-SKIW23FX": {
-      "file": "chunk-SKIW23FX.js"
+    "chunk-3OV72XIM": {
+      "file": "chunk-3OV72XIM.js"
     }
   }
 }

@@ -5,7 +5,8 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "dev": "ts-node-dev --respawn --transpile-only src/index.ts"
+    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "prefetch-geo": "ts-node --transpile-only scripts/prefetch-geo.ts"
   },
   "dependencies": {
     "axios": "^1.7.2",

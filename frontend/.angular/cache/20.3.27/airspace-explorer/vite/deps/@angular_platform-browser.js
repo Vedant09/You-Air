@@ -1,4 +1,7 @@
 import {
+  withHttpTransferCache
+} from "./chunk-QEATDK7X.js";
+import {
   BrowserDomAdapter,
   BrowserGetTestability,
   BrowserModule,
@@ -14,13 +17,10 @@ import {
   createApplication,
   platformBrowser,
   provideProtractorTestingSupport
-} from "./chunk-WOFG22P7.js";
-import {
-  withHttpTransferCache
-} from "./chunk-BA7INDB7.js";
+} from "./chunk-FQBSX6YD.js";
 import {
   getDOM
-} from "./chunk-Y5CQBNO6.js";
+} from "./chunk-FFXY2WL6.js";
 import "./chunk-JRX4MMIO.js";
 import {
   ApplicationRef,
@@ -63,10 +63,9 @@ import {
   ɵɵdefineInjector,
   ɵɵdefineNgModule,
   ɵɵinject
-} from "./chunk-2WA7OG6Z.js";
-import "./chunk-2FXAGBM3.js";
-import "./chunk-C46DD3QN.js";
-import "./chunk-SKIW23FX.js";
+} from "./chunk-DLOYTF7Y.js";
+import "./chunk-RSS3ODKE.js";
+import "./chunk-3OV72XIM.js";
 
 // node_modules/@angular/platform-browser/fesm2022/platform-browser.mjs
 var Meta = class _Meta {

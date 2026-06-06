@@ -1,98 +1,56 @@
-import { Component, OnInit, inject, signal, effect, ChangeDetectionStrategy } from '@angular/core';
+import { Component, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ViewerComponent } from './components/viewer/viewer.component';
-import { StatsBarComponent } from './components/stats-bar/stats-bar.component';
-import { SidebarComponent } from './components/sidebar/sidebar.component';
-import { AircraftCardComponent } from './components/aircraft-card/aircraft-card.component';
-import { SearchComponent } from './components/search/search.component';
-import { LayerControlsComponent } from './components/layer-controls/layer-controls.component';
-import { AppStateService } from './services/app-state.service';
-import { FlightService } from './services/flight.service';
-import { ConfigService } from './services/config.service';
+import { CountryPickerComponent } from './components/country-picker/country-picker.component';
+import { StatePickerComponent } from './components/state-picker/state-picker.component';
+import { MapViewComponent } from './components/map-view/map-view.component';
+import { Country } from './data/countries';
+import { GeoService, StateRegion } from './services/geo.service';
+
+type Screen = 'country' | 'state' | 'flights';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [
-    CommonModule,
-    ViewerComponent,
-    StatsBarComponent,
-    SidebarComponent,
-    AircraftCardComponent,
-    SearchComponent,
-    LayerControlsComponent,
-  ],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [CommonModule, CountryPickerComponent, StatePickerComponent, MapViewComponent],
   template: `
-    <div class="w-screen h-screen overflow-hidden relative bg-sky-950">
-
-      <!-- MapLibre + Deck.gl viewer (fills entire viewport) -->
-      <app-viewer></app-viewer>
-
-      <!-- Top navigation bar -->
-      <app-stats-bar></app-stats-bar>
-
-      <!-- Search + zoom shortcuts -->
-      <div class="fixed top-14 left-4 z-30">
-        <app-search></app-search>
-      </div>
-
-      <!-- Layer toggles (bottom-left) -->
-      <div class="fixed bottom-6 left-4 z-30">
-        <app-layer-controls></app-layer-controls>
-      </div>
-
-      <!-- Country / region sidebar (right) -->
-      <app-sidebar></app-sidebar>
-
-      <!-- Selected aircraft card (bottom-right, shifts left when sidebar open) -->
-      @if (state.selectedAircraft()) {
-        <div class="fixed bottom-6 z-40 animate-fade-in"
-             [class]="state.sidebarOpen() ? 'right-80' : 'right-4'">
-          <app-aircraft-card></app-aircraft-card>
-        </div>
+    @switch (screen()) {
+      @case ('country') {
+        <app-country-picker (countrySelected)="onCountry($event)" />
       }
-
-      <!-- Full-screen loading splash -->
-      @if (isLoading()) {
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-sky-950">
-          <div class="text-center">
-            <div class="spinner w-12 h-12 mx-auto mb-4" style="border-width: 3px;"></div>
-            <p class="text-sky-400 font-mono text-sm tracking-widest uppercase">Initializing</p>
-            <p class="text-slate-500 text-xs mt-1">Connecting to Airspace Explorer...</p>
-          </div>
-        </div>
+      @case ('state') {
+        <app-state-picker
+          [country]="selectedCountry()!"
+          (stateSelected)="onState($event)"
+          (back)="screen.set('country')"
+        />
       }
-    </div>
+      @case ('flights') {
+        <app-map-view
+          [country]="selectedCountry()!"
+          [state]="selectedState()!"
+          (back)="screen.set('state')"
+        />
+      }
+    }
   `,
-  styles: [`
-    .right-80 { right: 316px; }
-  `]
 })
-export class AppComponent implements OnInit {
-  state = inject(AppStateService);
-  private flights = inject(FlightService);
-  private config = inject(ConfigService);
+export class AppComponent {
+  private geo = inject(GeoService);
 
-  isLoading = signal(true);
+  screen = signal<Screen>('country');
+  selectedCountry = signal<Country | null>(null);
+  selectedState = signal<StateRegion | null>(null);
 
-  constructor() {
-    // Start polling aircraft only when the user selects a country or region.
-    // Stop and clear when they navigate back to the globe.
-    effect(() => {
-      const active = this.state.selectedRegion() ?? this.state.selectedCountry();
-      if (active) {
-        this.flights.startRegionPolling(active.bbox, 60_000);
-      } else {
-        this.flights.stopPolling();
-        this.flights.clearAircraft();
-      }
-    });
+  onCountry(country: Country): void {
+    this.selectedCountry.set(country);
+    this.screen.set('state');
+    // Kick off the GeoJSON fetch immediately — the state-picker will get it
+    // from the in-memory cache when it mounts, eliminating the wait.
+    this.geo.getAdm1(country.code).catch(() => { /* handled inside state-picker */ });
   }
 
-  async ngOnInit(): Promise<void> {
-    await this.config.load();
-    await this.flights.loadStats();
-    this.isLoading.set(false);
+  onState(state: StateRegion): void {
+    this.selectedState.set(state);
+    this.screen.set('flights');
   }
 }

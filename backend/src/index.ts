@@ -7,6 +7,7 @@ import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import flightRoutes from './routes/flights';
 import airportRoutes from './routes/airports';
+import geoRoutes from './routes/geo';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -40,6 +41,7 @@ app.get('/api/health', (_req, res) => {
 
 app.use('/api/flights', flightRoutes);
 app.use('/api/airports', airportRoutes);
+app.use('/api/geo', geoRoutes);
 
 app.use((_req, res) => {
   res.status(404).json({ success: false, error: 'Not found' });
