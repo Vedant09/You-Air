@@ -1,7 +1,21 @@
-import { Component, Output, EventEmitter, signal, computed, ChangeDetectionStrategy } from '@angular/core';
+import { Component, Output, EventEmitter, signal, computed, ChangeDetectionStrategy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 import { COUNTRIES, Country } from '../../data/countries';
+import { environment } from '../../environments/environment';
+
+export interface FoundFlight {
+  icao24: string;
+  callsign: string | null;
+  originCountry: string;
+  latitude: number;
+  longitude: number;
+  baroAltitude: number | null;
+  velocity: number | null;
+  trueTrack: number | null;
+}
 
 @Component({
   selector: 'app-country-picker',
@@ -52,49 +66,98 @@ import { COUNTRIES, Country } from '../../data/countries';
           </div>
         </div>
 
-        <!-- Search + dropdown -->
-        <div class="search-container">
-          <div class="search-box">
-            <span class="search-icon">🔍</span>
-            <input
-              type="text"
-              placeholder="Search for a country…"
-              [(ngModel)]="query"
-              (ngModelChange)="onQueryChange($event)"
-              class="search-input"
-              autocomplete="off"
-              spellcheck="false"
-            />
-            @if (query()) {
-              <button class="clear-btn" (click)="clearQuery()">✕</button>
-            }
-          </div>
-
-          @if (isOpen() && filtered().length > 0) {
-            <div class="dropdown">
-              @for (country of filtered(); track country.code) {
-                <button class="dropdown-item" (click)="select(country)">
-                  <span class="item-emoji">{{ country.emoji }}</span>
-                  <span class="item-name">{{ country.name }}</span>
-                  <span class="item-arrow">→</span>
-                </button>
-              }
-              @if (filtered().length === COUNTRIES.length) {
-                <div class="dropdown-hint">Type to filter · {{ COUNTRIES.length }} countries</div>
-              }
-            </div>
-          }
-
-          @if (isOpen() && filtered().length === 0) {
-            <div class="dropdown">
-              <div class="no-results">No countries found for "{{ query() }}"</div>
-            </div>
-          }
-
-          <button class="explore-btn" (click)="toggleOpen()">
-            {{ isOpen() ? 'Close' : '🌍 Choose a Country' }}
+        <!-- Mode tabs -->
+        <div class="tabs">
+          <button class="tab" [class.active]="mode() === 'country'" (click)="mode.set('country')">
+            🌍 By Country
+          </button>
+          <button class="tab" [class.active]="mode() === 'flight'" (click)="mode.set('flight')">
+            ✈ Find Flight
           </button>
         </div>
+
+        <!-- ── Country search ── -->
+        @if (mode() === 'country') {
+          <div class="search-container">
+            <div class="search-box">
+              <span class="search-icon">🔍</span>
+              <input
+                type="text"
+                placeholder="Search for a country…"
+                [(ngModel)]="query"
+                (ngModelChange)="onQueryChange($event)"
+                class="search-input"
+                autocomplete="off"
+                spellcheck="false"
+              />
+              @if (query()) {
+                <button class="clear-btn" (click)="clearQuery()">✕</button>
+              }
+            </div>
+
+            @if (isOpen() && filtered().length > 0) {
+              <div class="dropdown">
+                @for (country of filtered(); track country.code) {
+                  <button class="dropdown-item" (click)="select(country)">
+                    <span class="item-emoji">{{ country.emoji }}</span>
+                    <span class="item-name">{{ country.name }}</span>
+                    <span class="item-arrow">→</span>
+                  </button>
+                }
+                @if (filtered().length === COUNTRIES.length) {
+                  <div class="dropdown-hint">Type to filter · {{ COUNTRIES.length }} countries</div>
+                }
+              </div>
+            }
+
+            @if (isOpen() && filtered().length === 0) {
+              <div class="dropdown">
+                <div class="no-results">No countries found for "{{ query() }}"</div>
+              </div>
+            }
+
+            <button class="explore-btn" (click)="toggleOpen()">
+              {{ isOpen() ? 'Close' : '🌍 Choose a Country' }}
+            </button>
+          </div>
+        }
+
+        <!-- ── Flight search ── -->
+        @if (mode() === 'flight') {
+          <div class="search-container">
+            <div class="search-box" [class.error]="flightError()">
+              <span class="search-icon">✈</span>
+              <input
+                type="text"
+                placeholder="Callsign or ICAO24 (e.g. BAW123)"
+                [(ngModel)]="flightQuery"
+                (ngModelChange)="flightError.set(null)"
+                (keydown.enter)="findFlight()"
+                class="search-input"
+                autocomplete="off"
+                spellcheck="false"
+                [disabled]="flightLoading()"
+              />
+              @if (flightQuery) {
+                <button class="clear-btn" (click)="flightQuery = ''; flightError.set(null)">✕</button>
+              }
+            </div>
+
+            @if (flightError()) {
+              <div class="flight-error">⚠ {{ flightError() }}</div>
+            }
+
+            <button class="explore-btn" [class.loading]="flightLoading()" (click)="findFlight()" [disabled]="flightLoading()">
+              @if (flightLoading()) {
+                <span class="btn-spinner"></span> Searching…
+              } @else {
+                🔍 Track This Flight
+              }
+            </button>
+
+            <p class="flight-hint">Enter the callsign (e.g. <strong>BAW123</strong>, <strong>DLH456</strong>) or ICAO24 transponder code of any live flight.</p>
+          </div>
+        }
 
       </div>
     </div>
@@ -197,6 +260,25 @@ import { COUNTRIES, Country } from '../../data/countries';
     .stat-label { font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
     .stat-divider { width: 1px; height: 28px; background: rgba(255,255,255,0.08); }
 
+    /* Mode tabs */
+    .tabs {
+      display: flex; gap: 6px;
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px; padding: 4px; width: 100%;
+    }
+    .tab {
+      flex: 1; background: none; border: none;
+      color: #64748b; font-size: 14px; font-weight: 500;
+      padding: 10px; border-radius: 8px; cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tab.active {
+      background: rgba(56,189,248,0.12);
+      color: #38bdf8;
+      border: 1px solid rgba(56,189,248,0.25);
+    }
+    .tab:hover:not(.active) { color: #94a3b8; background: rgba(255,255,255,0.04); }
+
     /* Search */
     .search-container { width: 100%; display: flex; flex-direction: column; gap: 12px; position: relative; }
 
@@ -207,6 +289,7 @@ import { COUNTRIES, Country } from '../../data/countries';
       transition: border-color 0.2s;
     }
     .search-box:focus-within { border-color: rgba(56,189,248,0.7); background: rgba(255,255,255,0.08); }
+    .search-box.error { border-color: rgba(239,68,68,0.6); }
 
     .search-icon { font-size: 16px; flex-shrink: 0; }
     .search-input {
@@ -214,6 +297,7 @@ import { COUNTRIES, Country } from '../../data/countries';
       color: #e2e8f0; font-size: 16px;
     }
     .search-input::placeholder { color: #475569; }
+    .search-input:disabled { opacity: 0.5; }
     .clear-btn {
       background: none; border: none; color: #64748b; cursor: pointer;
       font-size: 14px; padding: 0; line-height: 1;
@@ -249,24 +333,55 @@ import { COUNTRIES, Country } from '../../data/countries';
       padding: 12px 16px; font-size: 13px; color: #475569; text-align: center;
     }
 
+    .flight-error {
+      background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3);
+      border-radius: 8px; padding: 10px 14px;
+      color: #f87171; font-size: 13px;
+    }
+
+    .flight-hint {
+      color: #475569; font-size: 12px; text-align: center; margin: 0;
+    }
+    .flight-hint strong { color: #64748b; }
+
     .explore-btn {
       background: linear-gradient(135deg, #0ea5e9, #6366f1);
       border: none; border-radius: 12px; padding: 16px;
       color: white; font-size: 16px; font-weight: 600; letter-spacing: 0.5px;
       cursor: pointer; width: 100%;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
       transition: opacity 0.2s, transform 0.2s;
       box-shadow: 0 4px 20px rgba(14,165,233,0.3);
     }
-    .explore-btn:hover { opacity: 0.9; transform: translateY(-1px); }
-    .explore-btn:active { transform: translateY(0); }
+    .explore-btn:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+    .explore-btn:active:not(:disabled) { transform: translateY(0); }
+    .explore-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .btn-spinner {
+      width: 16px; height: 16px; border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
   `],
 })
 export class CountryPickerComponent {
   @Output() countrySelected = new EventEmitter<Country>();
+  @Output() flightFound = new EventEmitter<FoundFlight>();
+
+  private http = inject(HttpClient);
 
   readonly COUNTRIES = COUNTRIES;
+
+  mode = signal<'country' | 'flight'>('country');
   query = signal('');
   isOpen = signal(false);
+
+  flightQuery = '';
+  flightLoading = signal(false);
+  flightError = signal<string | null>(null);
 
   filtered = computed(() => {
     const q = this.query().toLowerCase().trim();
@@ -294,5 +409,31 @@ export class CountryPickerComponent {
     this.isOpen.set(false);
     this.query.set('');
     this.countrySelected.emit(country);
+  }
+
+  async findFlight(): Promise<void> {
+    const q = this.flightQuery.trim();
+    if (!q) return;
+
+    this.flightLoading.set(true);
+    this.flightError.set(null);
+
+    try {
+      const result = await firstValueFrom(
+        this.http.get<{ success: boolean; data: FoundFlight }>(
+          `${environment.apiUrl}/api/flights/find?callsign=${encodeURIComponent(q)}`
+        )
+      );
+      this.flightFound.emit(result.data);
+    } catch (err: unknown) {
+      const status = (err as { status?: number }).status;
+      this.flightError.set(
+        status === 404
+          ? `No live flight found for "${q}". Check the callsign and try again.`
+          : 'Search failed — check your connection.'
+      );
+    } finally {
+      this.flightLoading.set(false);
+    }
   }
 }

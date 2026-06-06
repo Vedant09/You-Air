@@ -8,6 +8,7 @@ import rateLimit from 'express-rate-limit';
 import flightRoutes from './routes/flights';
 import airportRoutes from './routes/airports';
 import geoRoutes from './routes/geo';
+import trackRoutes from './routes/track';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -42,6 +43,7 @@ app.get('/api/health', (_req, res) => {
 app.use('/api/flights', flightRoutes);
 app.use('/api/airports', airportRoutes);
 app.use('/api/geo', geoRoutes);
+app.use('/api/track', trackRoutes);
 
 app.use((_req, res) => {
   res.status(404).json({ success: false, error: 'Not found' });

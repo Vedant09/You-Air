@@ -67,6 +67,24 @@ router.get('/country/:country', async (req: Request, res: Response) => {
   res.json({ success: true, count: flights.length, data: flights });
 });
 
+/** Find a single live flight by callsign or ICAO24 transponder code. */
+router.get('/find', async (req: Request, res: Response) => {
+  const raw = ((req.query.callsign as string) || '').trim().toUpperCase();
+  if (!raw) return res.status(400).json({ success: false, error: 'callsign query param is required' });
+
+  const flights = await getWorldFlights();
+  const found = flights.find(f =>
+    f.callsign?.toUpperCase().replace(/\s+/g, '') === raw ||
+    f.icao24.toUpperCase() === raw
+  );
+
+  if (!found || found.latitude === null || found.longitude === null) {
+    return res.status(404).json({ success: false, error: `No active flight found for "${raw}"` });
+  }
+
+  res.json({ success: true, data: found });
+});
+
 router.get('/region/:region', async (req: Request, res: Response) => {
   const { lamin, lamax, lomin, lomax } = req.query;
   if (!lamin || !lamax || !lomin || !lomax) {
