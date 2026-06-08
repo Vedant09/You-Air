@@ -1,5 +1,5 @@
 import {
-  Component, Input, Output, EventEmitter, OnInit, OnDestroy,
+  Component, Input, Output, EventEmitter, OnDestroy,
   AfterViewInit, ElementRef, ViewChild, NgZone, inject, signal,
   ChangeDetectionStrategy,
 } from '@angular/core';
@@ -37,7 +37,7 @@ interface PopupFlight {
   lon: number;
 }
 
-interface AirportPin { icao: string; name: string; city: string; lat: number; lon: number; estimated?: boolean; }
+interface AirportPin { icao: string; iata: string | null; name: string; city: string; lat: number; lon: number; estimated?: boolean; }
 
 interface TrackResult {
   icao24: string;
@@ -137,31 +137,57 @@ function makePlaneIcon(color: string, heading: number, tracked = false): L.DivIc
         <div class="refresh-fill" [style.width.%]="refreshPct()"></div>
       </div>
 
-      <!-- Selected flight popup -->
+      <!-- Selected flight card -->
       @if (popup()) {
-        <div class="flight-popup animate-in">
-          <div class="popup-header">
-            <span class="popup-callsign">{{ popup()!.callsign?.trim() || popup()!.icao24.toUpperCase() }}</span>
-            <button class="popup-close" (click)="popup.set(null)">✕</button>
+        @let track = trackInfo();
+        <div class="flight-card animate-in">
+
+          <div class="card-header">
+            <div class="card-id">
+              <span class="card-callsign">{{ popup()!.callsign?.trim() || popup()!.icao24.toUpperCase() }}</span>
+              <span class="card-country">{{ popup()!.country }}</span>
+            </div>
+            <button class="card-close" (click)="closeCard()">✕</button>
           </div>
-          <div class="popup-grid">
-            <div class="popup-field">
-              <span class="field-label">Country</span>
-              <span class="field-val">{{ popup()!.country }}</span>
+
+          @if (track.loading) {
+            <div class="card-origin">
+              <div class="shimmer sh-label"></div>
+              <div class="shimmer sh-iata"></div>
+              <div class="shimmer sh-city"></div>
             </div>
-            <div class="popup-field">
-              <span class="field-label">Altitude</span>
-              <span class="field-val sky">{{ popup()!.altitude !== null ? (popup()!.altitude! | number:'1.0-0') + ' m' : '—' }}</span>
+          } @else if (track.departure) {
+            <div class="card-origin">
+              <span class="origin-label">DEPARTED FROM</span>
+              <div class="origin-main">
+                <span class="origin-iata">{{ track.departure.iata || track.departure.icao }}</span>
+                <span class="origin-dot">·</span>
+                <span class="origin-city">{{ track.departure.city }}</span>
+              </div>
+              <span class="origin-name">{{ track.departure.name }}</span>
             </div>
-            <div class="popup-field">
-              <span class="field-label">Speed</span>
-              <span class="field-val green">{{ popup()!.speed !== null ? (popup()!.speed! * 1.944 | number:'1.0-0') + ' kts' : '—' }}</span>
+          } @else if (track.departure === null) {
+            <div class="card-origin">
+              <span class="origin-label">DEPARTED FROM</span>
+              <span class="origin-unknown">Origin unknown</span>
             </div>
-            <div class="popup-field">
-              <span class="field-label">Heading</span>
-              <span class="field-val">{{ popup()!.heading !== null ? (popup()!.heading! | number:'1.0-0') + '°' : '—' }}</span>
+          }
+
+          <div class="card-telem">
+            <div class="telem-item">
+              <span class="telem-label">ALT</span>
+              <span class="telem-val sky">{{ popup()!.altitude !== null ? (popup()!.altitude! | number:'1.0-0') + ' m' : '—' }}</span>
+            </div>
+            <div class="telem-item">
+              <span class="telem-label">SPD</span>
+              <span class="telem-val green">{{ popup()!.speed !== null ? (popup()!.speed! * 1.944 | number:'1.0-0') + ' kt' : '—' }}</span>
+            </div>
+            <div class="telem-item">
+              <span class="telem-label">HDG</span>
+              <span class="telem-val">{{ popup()!.heading !== null ? (popup()!.heading! | number:'1.0-0') + '°' : '—' }}</span>
             </div>
           </div>
+
         </div>
       }
 
@@ -254,37 +280,92 @@ function makePlaneIcon(color: string, heading: number, tracked = false): L.DivIc
       transition: width 1s linear;
     }
 
-    /* Flight popup */
-    .flight-popup {
-      position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+    /* Flight card */
+    .flight-card {
+      position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
       z-index: 1000;
-      background: rgba(5,13,26,0.95); border: 1px solid rgba(56,189,248,0.3);
-      border-radius: 14px; padding: 16px; min-width: 260px;
-      backdrop-filter: blur(12px);
-      box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+      background: rgba(5,13,26,0.97); border: 1px solid rgba(56,189,248,0.18);
+      border-radius: 16px; min-width: 300px; max-width: 380px;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 24px 60px rgba(0,0,0,0.65);
+      overflow: hidden;
     }
-    .animate-in { animation: pop-in 0.2s ease-out; }
+    .animate-in { animation: pop-in 0.18s ease-out; }
     @keyframes pop-in {
-      from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+      from { opacity: 0; transform: translateX(-50%) translateY(12px); }
       to   { opacity: 1; transform: translateX(-50%) translateY(0); }
     }
-    .popup-header {
-      display: flex; align-items: center; justify-content: space-between;
-      margin-bottom: 12px;
-    }
-    .popup-callsign { font-size: 18px; font-weight: 700; color: #e2e8f0; font-family: 'JetBrains Mono', monospace; }
-    .popup-close {
-      background: none; border: none; color: #64748b; cursor: pointer;
-      font-size: 16px; line-height: 1; transition: color 0.2s;
-    }
-    .popup-close:hover { color: #e2e8f0; }
 
-    .popup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .popup-field { display: flex; flex-direction: column; gap: 2px; }
-    .field-label { font-size: 10px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; }
-    .field-val { font-size: 14px; color: #94a3b8; font-family: 'JetBrains Mono', monospace; }
-    .field-val.sky { color: #38bdf8; }
-    .field-val.green { color: #34d399; }
+    /* Card header */
+    .card-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      padding: 16px 18px 14px;
+    }
+    .card-id { display: flex; flex-direction: column; gap: 3px; }
+    .card-callsign {
+      font-size: 22px; font-weight: 700; color: #f1f5f9;
+      font-family: 'JetBrains Mono', monospace; letter-spacing: 0.5px; line-height: 1;
+    }
+    .card-country { font-size: 12px; color: #475569; }
+    .card-close {
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+      color: #475569; cursor: pointer; font-size: 12px;
+      border-radius: 6px; padding: 4px 8px; transition: all 0.15s; line-height: 1;
+    }
+    .card-close:hover { background: rgba(255,255,255,0.1); color: #94a3b8; }
+
+    /* Origin section */
+    .card-origin {
+      padding: 12px 18px 14px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      display: flex; flex-direction: column; gap: 5px;
+      min-height: 76px; justify-content: center;
+    }
+    .origin-label {
+      font-size: 9px; font-weight: 700; color: #334155;
+      letter-spacing: 1.2px; text-transform: uppercase;
+    }
+    .origin-main { display: flex; align-items: baseline; gap: 8px; }
+    .origin-iata {
+      font-size: 30px; font-weight: 800; color: #f1f5f9;
+      font-family: 'JetBrains Mono', monospace; letter-spacing: 1px; line-height: 1;
+    }
+    .origin-dot { font-size: 18px; color: #1e293b; }
+    .origin-city { font-size: 14px; font-weight: 600; color: #94a3b8; }
+    .origin-name { font-size: 11px; color: #475569; }
+    .origin-unknown { font-size: 13px; color: #334155; font-style: italic; }
+
+    /* Shimmer skeleton */
+    .shimmer {
+      background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.04) 75%);
+      background-size: 200% 100%;
+      animation: shimmer-anim 1.4s ease-in-out infinite;
+      border-radius: 4px;
+    }
+    @keyframes shimmer-anim {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    .sh-label { width: 80px; height: 9px; }
+    .sh-iata { width: 100px; height: 30px; }
+    .sh-city { width: 140px; height: 13px; }
+
+    /* Telemetry row */
+    .card-telem {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      padding: 12px 18px 14px;
+    }
+    .telem-item { display: flex; flex-direction: column; gap: 4px; }
+    .telem-item:not(:last-child) { border-right: 1px solid rgba(255,255,255,0.05); padding-right: 14px; }
+    .telem-item:not(:first-child) { padding-left: 14px; }
+    .telem-label {
+      font-size: 9px; color: #334155; text-transform: uppercase;
+      letter-spacing: 0.8px; font-weight: 700;
+    }
+    .telem-val { font-size: 15px; color: #64748b; font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+    .telem-val.sky { color: #38bdf8; }
+    .telem-val.green { color: #34d399; }
 
     /* No flights */
     .no-flights {
@@ -322,6 +403,10 @@ export class MapViewComponent implements AfterViewInit, OnDestroy {
   popup = signal<PopupFlight | null>(null);
   lastUpdated = signal<Date | null>(null);
   refreshPct = signal(100);
+  trackInfo = signal<{ loading: boolean; departure: AirportPin | null | undefined }>({
+    loading: false,
+    departure: undefined,
+  });
 
   private map!: L.Map;
   private tracked = new Map<string, TrackedFlight>();
@@ -382,7 +467,10 @@ export class MapViewComponent implements AfterViewInit, OnDestroy {
 
     // Click map → close popup and clear track
     this.map.on('click', () => {
-      this.zone.run(() => this.popup.set(null));
+      this.zone.run(() => {
+        this.popup.set(null);
+        this.trackInfo.set({ loading: false, departure: undefined });
+      });
       this.clearTrackLayers();
     });
 
@@ -526,6 +614,12 @@ export class MapViewComponent implements AfterViewInit, OnDestroy {
     this.rafId = requestAnimationFrame(tick);
   }
 
+  closeCard(): void {
+    this.popup.set(null);
+    this.trackInfo.set({ loading: false, departure: undefined });
+    this.clearTrackLayers();
+  }
+
   // ─── Flight track / route ─────────────────────────────────────────────────
 
   private clearTrackLayers(): void {
@@ -537,100 +631,37 @@ export class MapViewComponent implements AfterViewInit, OnDestroy {
 
   private async loadTrack(icao24: string): Promise<void> {
     this.clearTrackLayers();
+    this.zone.run(() => this.trackInfo.set({ loading: true, departure: undefined }));
+
     try {
       const result = await firstValueFrom(
         this.http.get<TrackResult>(`${environment.apiUrl}/api/track/${icao24}`)
       );
 
-      // 1. Flown path — thin dashed white line
+      this.zone.run(() => this.trackInfo.set({ loading: false, departure: result.departure }));
+
       if (result.path.length > 1) {
         this.trackLayer = L.polyline(result.path, {
-          color: '#ffffff',
-          weight: 1.5,
-          opacity: 0.45,
-          dashArray: '4 6',
+          color: '#ffffff', weight: 1.5, opacity: 0.45, dashArray: '4 6',
         }).addTo(this.map);
       }
-
-      // 2. Great-circle arc from departure to arrival — solid cyan line
-      if (result.departure && result.arrival) {
-        const arcPoints = this.greatCirclePoints(
-          result.departure.lat, result.departure.lon,
-          result.arrival.lat,  result.arrival.lon,
-          80
-        );
-        this.arcLayer = L.polyline(arcPoints, {
-          color: '#38bdf8',
-          weight: 2,
-          opacity: 0.7,
-          dashArray: '8 5',
-        }).addTo(this.map);
-      }
-
-      // 3. Airport pins
-      const pinIcon = (label: string, color: string) => L.divIcon({
-        html: `<div style="
-          background:${color}; color:#fff; font-size:10px; font-weight:700;
-          padding:3px 7px; border-radius:6px; white-space:nowrap;
-          box-shadow:0 2px 8px rgba(0,0,0,0.5);
-          border:1px solid rgba(255,255,255,0.2);">
-          ${label}
-        </div>`,
-        className: '',
-        iconAnchor: [0, 10],
-      });
 
       if (result.departure) {
-        const { lat, lon, icao, city } = result.departure;
-        const m = L.marker([lat, lon], { icon: pinIcon(`✈ ${icao}`, '#10b981'), zIndexOffset: 500 })
-          .bindTooltip(`Departure: ${city} (${icao})`, { direction: 'top' })
-          .addTo(this.map);
-        this.airportMarkers.push(m);
-      }
-      if (result.arrival) {
-        const { lat, lon, icao, city, estimated } = result.arrival;
-        const label = estimated ? `~ ${icao}` : `⬇ ${icao}`;
-        const color = estimated ? '#8b5cf6' : '#f59e0b';
-        const tooltip = estimated
-          ? `Est. destination: ${city} (${icao}) — based on heading`
-          : `Arrival: ${city} (${icao})`;
-        const m = L.marker([lat, lon], { icon: pinIcon(label, color), zIndexOffset: 500 })
-          .bindTooltip(tooltip, { direction: 'top' })
+        const { lat, lon, icao, iata, city } = result.departure;
+        const code = iata || icao;
+        const pin = L.divIcon({
+          html: `<div style="background:#10b981;color:#fff;font-size:10px;font-weight:700;padding:3px 7px;border-radius:6px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.2);">✈ ${code}</div>`,
+          className: '',
+          iconAnchor: [0, 10],
+        });
+        const m = L.marker([lat, lon], { icon: pin, zIndexOffset: 500 })
+          .bindTooltip(`Departed: ${city} (${code})`, { direction: 'top' })
           .addTo(this.map);
         this.airportMarkers.push(m);
       }
     } catch {
-      // Track fetch failed silently — user still sees the popup
+      this.zone.run(() => this.trackInfo.set({ loading: false, departure: null }));
     }
-  }
-
-  /** Compute n intermediate points along the great-circle arc between two lat/lon pairs. */
-  private greatCirclePoints(
-    lat1: number, lon1: number, lat2: number, lon2: number, n = 80
-  ): [number, number][] {
-    const toRad = (d: number) => d * Math.PI / 180;
-    const toDeg = (r: number) => r * 180 / Math.PI;
-    const φ1 = toRad(lat1), λ1 = toRad(lon1);
-    const φ2 = toRad(lat2), λ2 = toRad(lon2);
-
-    const d = 2 * Math.asin(Math.sqrt(
-      Math.sin((φ2 - φ1) / 2) ** 2 +
-      Math.cos(φ1) * Math.cos(φ2) * Math.sin((λ2 - λ1) / 2) ** 2
-    ));
-
-    if (d < 0.0001) return [[lat1, lon1], [lat2, lon2]];
-
-    const points: [number, number][] = [];
-    for (let i = 0; i <= n; i++) {
-      const f = i / n;
-      const a = Math.sin((1 - f) * d) / Math.sin(d);
-      const b = Math.sin(f * d) / Math.sin(d);
-      const x = a * Math.cos(φ1) * Math.cos(λ1) + b * Math.cos(φ2) * Math.cos(λ2);
-      const y = a * Math.cos(φ1) * Math.sin(λ1) + b * Math.cos(φ2) * Math.sin(λ2);
-      const z = a * Math.sin(φ1) + b * Math.sin(φ2);
-      points.push([toDeg(Math.atan2(z, Math.sqrt(x * x + y * y))), toDeg(Math.atan2(y, x))]);
-    }
-    return points;
   }
 
   // ─── Refresh progress bar ─────────────────────────────────────────────────
