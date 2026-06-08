@@ -3,6 +3,7 @@ import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
 import { cacheService } from '../services/cache.service';
+import { getAirports } from '../services/airports.service';
 
 const router = Router();
 
@@ -13,17 +14,24 @@ const TOKEN_URL =
 // ─── Airport lookup ───────────────────────────────────────────────────────────
 
 interface AirportInfo { name: string; city: string; lat: number; lon: number; }
-type AirportPin = AirportInfo & { icao: string; estimated?: boolean };
+type AirportPin = AirportInfo & { icao: string; iata: string | null; estimated?: boolean };
 
 const AIRPORTS: Record<string, AirportInfo> = JSON.parse(
   fs.readFileSync(path.join(__dirname, '../../data/airports_lookup.json'), 'utf-8')
 );
 const AIRPORT_LIST = Object.entries(AIRPORTS).map(([icao, a]) => ({ icao, ...a }));
 
+// IATA codes only exist in the curated airport dataset — cross-reference by ICAO
+const IATA_BY_ICAO: Record<string, string> = {};
+for (const ap of getAirports()) {
+  IATA_BY_ICAO[ap.icao] = ap.iata;
+}
+
 function lookupAirport(icao: string | null): AirportPin | null {
   if (!icao) return null;
-  const a = AIRPORTS[icao.toUpperCase()];
-  return a ? { icao: icao.toUpperCase(), ...a } : null;
+  const key = icao.toUpperCase();
+  const a = AIRPORTS[key];
+  return a ? { icao: key, iata: IATA_BY_ICAO[key] ?? null, ...a } : null;
 }
 
 /** Haversine distance in km between two lat/lon points. */
@@ -95,7 +103,7 @@ function estimateDestination(
 
   if (candidates.length === 0) return null;
   const { dist: _d, angleDiff: _a, ...ap } = candidates[0];
-  return { ...ap, estimated: true };
+  return { ...ap, iata: IATA_BY_ICAO[ap.icao] ?? null, estimated: true };
 }
 
 // ─── OAuth token ──────────────────────────────────────────────────────────────
@@ -138,7 +146,7 @@ router.get('/:icao24', async (req: Request, res: Response) => {
 
   const hdrs = await authHeaders();
   const now = Math.floor(Date.now() / 1000);
-  const begin = now - 7200;
+  const begin = now - 86400; // 24-hour lookback to catch long-haul departures
 
   const [trackRes, flightRes] = await Promise.allSettled([
     axios.get(`${OPENSKY_BASE}/tracks/all?icao24=${icao24}&time=0`, { headers: hdrs, timeout: 15_000 }),
